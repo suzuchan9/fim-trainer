@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FIM採点トレーナー</title>
+<style>
+:root{
+  --teal:#1b9e9e;
+  --teal-dark:#157d7d;
+  --teal-light:#e6f5f5;
+  --blue:#2b7cc4;
+  --blue-light:#eaf3fb;
+  --bg:#f4f7f8;
+  --card:#ffffff;
+  --text:#2c3e46;
+  --text-sub:#63757d;
+  --border:#dde5e8;
+  --ok:#2fa36b;
+  --ok-light:#e5f6ee;
+  --ng:#d95c5c;
+  --ng-light:#fbeaea;
+  --shadow:0 2px 10px rgba(30,60,70,.08);
+  --gold:#e0a52e;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.6;
+  font-size:15px;
+  padding-bottom:72px;
+}
+.app-header{
+  position:sticky;top:0;z-index:50;
+  background:linear-gradient(135deg,var(--teal),var(--blue));
+  color:#fff;padding:14px 16px;
+  box-shadow:0 2px 8px rgba(0,0,0,.12);
+}
+.app-header h1{margin:0;font-size:18px;font-weight:700;letter-spacing:.02em;}
+.app-header p{margin:2px 0 0;font-size:12px;opacity:.92;}
+.container{max-width:720px;margin:0 auto;padding:14px 12px 20px;}
+.screen{display:none;}
+.screen.active{display:block;animation:fade .25s ease;}
+@keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+/* ===== bottom nav ===== */
+.tabbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:60;
+  display:flex;background:var(--card);
+  border-top:1px solid var(--border);
+  box-shadow:0 -2px 10px rgba(30,60,70,.06);
+  padding-bottom:env(safe-area-inset-bottom,0);
+}
+.tabbar button{
+  flex:1;border:none;background:none;cursor:pointer;
+  padding:8px 4px 10px;font-size:11px;color:var(--text-sub);
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  font-family:inherit;transition:color .15s;
+}
+.tabbar button .ic{font-size:21px;line-height:1;}
+.tabbar button.active{color:var(--teal);font-weight:700;}
+
+/* ===== cards & common ===== */
+.card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:14px;margin-bottom:12px;}
+.section-title{font-size:15px;font-weight:700;margin:0 0 4px;color:var(--teal-dark);display:flex;align-items:center;gap:6px;}
+.muted{color:var(--text-sub);font-size:13px;}
+.btn{font-family:inherit;cursor:pointer;border:none;border-radius:10px;font-size:14px;padding:10px 14px;font-weight:600;}
+.btn-primary{background:var(--teal);color:#fff;}
+.btn-ghost{background:var(--teal-light);color:var(--teal-dark);}
+.btn-danger{background:var(--ng-light);color:var(--ng);}
+
+/* ===== score mode ===== */
+.cat-block{margin-bottom:12px;}
+.cat-head{font-size:14px;font-weight:700;color:#fff;background:var(--teal);border-radius:10px 10px 0 0;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;}
+.cat-head .sub{font-size:12px;font-weight:600;background:rgba(255,255,255,.22);padding:2px 8px;border-radius:20px;}
+.cat-body{background:var(--card);border-radius:0 0 12px 12px;box-shadow:var(--shadow);overflow:hidden;}
+.item-row{padding:11px 12px;border-bottom:1px solid var(--border);}
+.item-row:last-child{border-bottom:none;}
+.item-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;}
+.item-name{font-weight:600;font-size:14px;}
+.help-btn{flex-shrink:0;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--blue);background:var(--blue-light);color:var(--blue);font-weight:700;font-size:14px;cursor:pointer;line-height:1;}
+.score-btns{display:flex;gap:5px;}
+.score-btns button{flex:1;height:40px;border:1.5px solid var(--border);background:#fff;border-radius:9px;font-size:16px;font-weight:700;color:var(--text-sub);cursor:pointer;transition:all .12s;font-family:inherit;}
+.score-btns button.sel{background:var(--teal);border-color:var(--teal);color:#fff;transform:scale(1.04);box-shadow:0 2px 6px rgba(27,158,158,.4);}
+.item-label{font-size:12px;margin-top:6px;min-height:16px;color:var(--teal-dark);font-weight:600;}
+.item-label.empty{color:#b6c2c7;font-weight:400;}
+
+/* summary bar */
+.summary{position:sticky;bottom:72px;z-index:40;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 -3px 14px rgba(30,60,70,.12);padding:10px 12px;margin-top:6px;}
+.sum-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;}
+.sum-cell{background:var(--bg);border-radius:9px;padding:6px 4px;}
+.sum-cell .lbl{font-size:10px;color:var(--text-sub);display:block;}
+.sum-cell .val{font-size:17px;font-weight:800;color:var(--teal-dark);}
+.sum-cell.total{background:var(--teal-light);}
+.sum-foot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;}
+.sum-foot .rest{font-size:12px;color:var(--text-sub);}
+
+/* ===== modal ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(30,50,58,.55);z-index:100;display:none;align-items:flex-end;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:#fff;width:100%;max-width:640px;max-height:86vh;overflow-y:auto;border-radius:18px 18px 0 0;padding:16px 16px 26px;animation:slideup .25s ease;}
+@keyframes slideup{from{transform:translateY(40px);opacity:.5;}to{transform:none;opacity:1;}}
+.modal-box h3{margin:0 0 4px;font-size:16px;color:var(--teal-dark);}
+.modal-close{position:sticky;top:0;float:right;background:var(--bg);border:none;width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer;color:var(--text-sub);}
+.crit-row{display:flex;gap:10px;padding:9px 0;border-bottom:1px dashed var(--border);}
+.crit-row:last-child{border-bottom:none;}
+.crit-score{flex-shrink:0;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:15px;}
+.crit-txt{font-size:13px;line-height:1.55;}
+.crit-txt b{color:var(--teal-dark);}
+.sc7,.sc6{background:#2fa36b;} .sc5{background:#57a86b;} .sc4{background:#e0a52e;}
+.sc3{background:#e08a2e;} .sc2{background:#dd6f4f;} .sc1{background:#d95c5c;}
+
+/* ===== learn ===== */
+.rule-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;}
+.rule-table td{border:1px solid var(--border);padding:7px 8px;vertical-align:top;}
+.rule-table td.n{width:30px;text-align:center;font-weight:800;color:#fff;}
+.acc{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.acc-head{padding:11px 12px;font-weight:700;font-size:14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#fff;}
+.acc-head .arw{transition:transform .2s;color:var(--teal);}
+.acc.open .acc-head .arw{transform:rotate(90deg);}
+.acc-body{display:none;padding:0 12px 12px;}
+.acc.open .acc-body{display:block;}
+.principle li{margin-bottom:7px;}
+.principle b{color:var(--teal-dark);}
+
+/* ===== quiz ===== */
+.level-card{background:linear-gradient(135deg,var(--blue),var(--teal));color:#fff;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:var(--shadow);}
+.level-top{display:flex;justify-content:space-between;align-items:center;}
+.level-title{font-size:17px;font-weight:800;}
+.level-lv{font-size:12px;background:rgba(255,255,255,.25);padding:3px 10px;border-radius:20px;font-weight:700;}
+.prog-wrap{background:rgba(255,255,255,.28);border-radius:20px;height:10px;margin-top:10px;overflow:hidden;}
+.prog-bar{background:#fff;height:100%;border-radius:20px;transition:width .5s ease;}
+.level-sub{font-size:12px;margin-top:6px;opacity:.95;display:flex;justify-content:space-between;}
+.stat-row{display:flex;gap:8px;margin-bottom:12px;}
+.stat-box{flex:1;background:var(--card);border-radius:12px;box-shadow:var(--shadow);padding:10px;text-align:center;}
+.stat-box .v{font-size:18px;font-weight:800;color:var(--teal-dark);}
+.stat-box .l{font-size:11px;color:var(--text-sub);}
+
+.q-progress{font-size:12px;color:var(--text-sub);margin-bottom:8px;text-align:center;}
+.q-progress .dots{display:inline-flex;gap:5px;margin-left:6px;}
+.q-progress .dot{width:9px;height:9px;border-radius:50%;background:var(--border);}
+.q-progress .dot.ok{background:var(--ok);} .q-progress .dot.ng{background:var(--ng);} .q-progress .dot.cur{background:var(--teal);}
+.q-tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;margin-bottom:8px;}
+.q-tag.case{background:var(--teal-light);color:var(--teal-dark);}
+.q-tag.know{background:var(--blue-light);color:var(--blue);}
+.q-text{font-size:15px;font-weight:600;margin-bottom:12px;line-height:1.7;}
+.opt-list{display:flex;flex-direction:column;gap:8px;}
+.opt{border:1.5px solid var(--border);background:#fff;border-radius:11px;padding:12px;text-align:left;font-size:14px;cursor:pointer;font-family:inherit;color:var(--text);transition:all .12s;display:flex;gap:9px;align-items:center;}
+.opt .num{flex-shrink:0;width:26px;height:26px;border-radius:7px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:var(--text-sub);}
+.opt.correct{background:var(--ok-light);border-color:var(--ok);}
+.opt.correct .num{background:var(--ok);color:#fff;}
+.opt.wrong{background:var(--ng-light);border-color:var(--ng);}
+.opt.wrong .num{background:var(--ng);color:#fff;}
+.opt:disabled{cursor:default;}
+.explain{margin-top:12px;padding:12px;border-radius:11px;font-size:13px;line-height:1.65;background:var(--bg);border-left:4px solid var(--teal);}
+.explain .res{font-weight:800;font-size:14px;margin-bottom:5px;display:block;}
+.explain .res.ok{color:var(--ok);} .explain .res.ng{color:var(--ng);}
+.next-btn{width:100%;margin-top:12px;padding:13px;font-size:15px;}
+
+/* result */
+.result-hero{text-align:center;padding:14px 0 6px;}
+.result-score{font-size:44px;font-weight:900;color:var(--teal);line-height:1.1;}
+.result-msg{font-size:16px;font-weight:700;margin:6px 0;color:var(--teal-dark);}
+.result-lvup{background:var(--ok-light);color:var(--ok);border-radius:12px;padding:10px;text-align:center;font-weight:700;margin:10px 0;animation:pop .4s ease;}
+@keyframes pop{0%{transform:scale(.7);opacity:0;}60%{transform:scale(1.08);}100%{transform:scale(1);opacity:1;}}
+
+/* confetti */
+.confetti{position:fixed;top:-12px;width:9px;height:14px;z-index:200;pointer-events:none;border-radius:2px;animation:fall linear forwards;}
+@keyframes fall{to{transform:translateY(105vh) rotate(540deg);opacity:.9;}}
+.sparkle{position:fixed;z-index:200;font-size:26px;pointer-events:none;animation:spk .8s ease forwards;}
+@keyframes spk{0%{transform:scale(.3) translateY(0);opacity:0;}30%{opacity:1;}100%{transform:scale(1.4) translateY(-40px);opacity:0;}}
+
+@media(min-width:600px){
+  .score-btns button{height:44px;}
+  body{font-size:15px;}
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>FIM採点トレーナー</h1>
+  <p>回復期リハ看護師さんのための、FIM学習・採点サポート</p>
+</header>
+
+<!-- ===== 採点モード ===== -->
+<section id="screen-score" class="screen active">
+  <div class="container" id="scoreContainer"></div>
+</section>
+
+<!-- ===== 学習ガイド ===== -->
+<section id="screen-learn" class="screen">
+  <div class="container" id="learnContainer"></div>
+</section>
+
+<!-- ===== 練習問題 ===== -->
+<section id="screen-quiz" class="screen">
+  <div class="container" id="quizContainer"></div>
+</section>
+
+<!-- ===== モーダル ===== -->
+<div id="modalOverlay" class="modal-overlay"><div id="modalBox" class="modal-box"></div></div>
+
+<!-- ===== bottom nav ===== -->
+<nav class="tabbar">
+  <button data-screen="screen-score" class="active"><span class="ic">📝</span>採点モード</button>
+  <button data-screen="screen-learn"><span class="ic">📖</span>学習ガイド</button>
+  <button data-screen="screen-quiz"><span class="ic">🎯</span>練習問題</button>
+</nav>
+
+<script>
+/* ================= 共通 ================= */
+var LABELS={7:"完全自立",6:"修正自立",5:"監視・準備",4:"最小介助",3:"中等度介助",2:"最大介助",1:"全介助"};
+
+/* ===== FIM 18項目データ（採点基準） ===== */
+var FIM_DATA=[
+ {cat:"セルフケア",items:[
+  {k:"eat",name:"食事",motor:true,c:{
+   7:"適切な食器を使い、皿から口へ食物を運び、咀嚼・嚥下まで自立。自助具は使わず、常識的な時間・安全に食べられる。",
+   6:"自助具（太柄スプーン・すくいやすい皿など）を使う／時間が非常にかかる／安全性への配慮が必要／経管栄養を自分で管理。準備・介助は不要。",
+   5:"配膳後の準備のみ（きざみ・とろみへの調整、ふたを開ける、装具装着、皿の固定など）や見守り・声かけがあれば食べられる。",
+   4:"75%以上を自分で行い、時々わずかに手を添える程度の介助。",
+   3:"50〜74%を自分で行い、口へ運ぶのを中等度手伝う。",
+   2:"25〜49%しか自分で行えず、大部分を介助。",
+   1:"25%未満しか行えない、または食事のほぼ全介助・経管栄養が主で管理も他者。"}},
+  {k:"groom",name:"整容",motor:true,c:{
+   7:"口腔ケア・整髪・手洗い・洗顔・髭剃り（または化粧）の5動作すべて自立。",
+   6:"自助具を使う／時間がかかる／安全性への配慮が必要だが、準備・介助なしで行える。",
+   5:"道具の準備（歯磨き粉をつける、道具を出す）や見守り・声かけがあれば行える。",
+   4:"5動作の75%以上を自分で行い、一部を軽く手伝う。",
+   3:"50〜74%を自分で行う。",
+   2:"25〜49%を自分で行う。",
+   1:"25%未満。ほとんどを介助。"}},
+  {k:"bath",name:"清拭（入浴）",motor:true,c:{
+   7:"首から下（背中は除く）の10部位を自分で洗い、乾かすまで自立。",
+   6:"自助具（長柄ブラシ等）を使う／時間がかかる／安全性への配慮が必要。",
+   5:"準備（お湯・道具の用意、石けんをつける）や見守りがあれば行える。",
+   4:"10部位のうち概ね75%以上（約8部位）を自分で洗える。",
+   3:"50〜74%（約5〜7部位）を自分で洗える。",
+   2:"25〜49%（約3〜4部位）を自分で洗える。",
+   1:"25%未満（2部位以下）。ほとんどを介助。"}},
+  {k:"dressU",name:"更衣（上半身）",motor:true,c:{
+   7:"腰から上の更衣が自立。かぶり・前開き、義肢・装具の着脱も自分で行う。",
+   6:"自助具を使う／時間がかかる／安全性への配慮／義肢・装具の装着を含めて修正自立。",
+   5:"衣服の準備・選択や見守り・声かけがあれば着られる。",
+   4:"75%以上を自分で行い、袖通しなど一部を手伝う。",
+   3:"50〜74%を自分で行う。",
+   2:"25〜49%を自分で行う。",
+   1:"25%未満。ほとんどを介助。"}},
+  {k:"dressL",name:"更衣（下半身）",motor:true,c:{
+   7:"腰から下の更衣（下着・ズボン・靴下・靴、装具含む）が自立。",
+   6:"自助具（ソックスエイド・リーチャー等）を使う／時間／安全性配慮／装具着脱を含め修正自立。",
+   5:"衣服の準備や見守り・声かけがあれば着られる。",
+   4:"75%以上を自分で行い、一部を手伝う。",
+   3:"50〜74%を自分で行う。",
+   2:"25〜49%を自分で行う。",
+   1:"25%未満。ほとんどを介助。"}},
+  {k:"toilet",name:"トイレ動作",motor:true,c:{
+   7:"衣服の上げ下げ、排泄後の清拭、生理用具の使用が自立（移乗・排泄管理は別項目）。",
+   6:"自助具・手すりを使う／時間がかかる／安全性への配慮が必要。",
+   5:"準備や見守り・声かけがあれば行える。",
+   4:"75%以上を自分で行い、清拭など一部を手伝う。",
+   3:"50〜74%を自分で行う。",
+   2:"25〜49%を自分で行う。",
+   1:"25%未満。ほとんどを介助。"}}
+ ]},
+ {cat:"排泄コントロール",items:[
+  {k:"bladder",name:"排尿管理",motor:true,c:{
+   7:"排尿を完全にコントロールでき、失禁なし。用具・薬は不要。",
+   6:"留置・自己導尿カテーテル、収尿器、パッド等の用具や内服を自分で管理し、失敗（失禁）はない。",
+   5:"用具の準備や見守りが必要、またはごくまれ（概ね月1回程度以下）の失禁がある。",
+   4:"75%以上コントロールでき、週1回程度の失禁、またはわずかな介助が必要。",
+   3:"50〜74%コントロール。1日1回程度の失禁や中等度の介助。",
+   2:"25〜49%コントロール。頻回の失禁や導尿の大部分を介助。",
+   1:"25%未満。ほぼ毎回失禁、または排尿管理を全面的に介助。"}},
+  {k:"bowel",name:"排便管理",motor:true,c:{
+   7:"排便を完全にコントロールでき、失禁なし。器具・薬（緩下剤・坐薬・浣腸）は不要。",
+   6:"坐薬・緩下剤・ストーマ等を自分で管理し、失敗（失禁）はない。",
+   5:"器具の準備や見守りが必要、またはごくまれ（概ね月1回程度以下）の失禁がある。",
+   4:"75%以上コントロール。週1回程度の失禁、またはわずかな介助（坐薬挿入の一部等）。",
+   3:"50〜74%コントロール。中等度の介助や時々の失禁。",
+   2:"25〜49%コントロール。頻回の失禁や摘便等の大部分を介助。",
+   1:"25%未満。ほぼ毎回失禁、または排便管理を全面的に介助。"}}
+ ]},
+ {cat:"移乗",items:[
+  {k:"trBed",name:"ベッド・椅子・車椅子",motor:true,c:{
+   7:"ベッド⇔椅子⇔車椅子の移乗が自立。車椅子の場合はアプローチ・ブレーキ・フットレスト操作も含めて自分で行う。",
+   6:"手すり・スライディングボード等を使う／時間／安全性への配慮が必要だが、介助は不要。",
+   5:"見守り・声かけ・準備（装具や車椅子のセッティング）があれば移乗できる。",
+   4:"75%以上を自分で行い、軽く触れる程度の介助。",
+   3:"50〜74%を自分で行う。",
+   2:"25〜49%を自分で行う。",
+   1:"25%未満、または2人がかりの介助が必要。"}},
+  {k:"trToilet",name:"トイレ",motor:true,c:{
+   7:"便器への移乗（乗り移り・立ち座り）が自立。",
+   6:"手すり等を使う／時間／安全性への配慮が必要。",
+   5:"見守り・声かけ・準備があれば移乗できる。",
+   4:"75%以上を自分で行い、軽く介助。",
+   3:"50〜74%を自分で行う。",
+   2:"25〜49%を自分で行う。",
+   1:"25%未満、または2人介助が必要。"}},
+  {k:"trTub",name:"浴槽・シャワー",motor:true,c:{
+   7:"浴槽またはシャワー室への出入り（またぎ動作含む）が自立。",
+   6:"手すり・シャワーチェア・バスボード等を使う／時間／安全性への配慮が必要。",
+   5:"見守り・声かけ・準備があれば出入りできる。",
+   4:"75%以上を自分で行い、軽く介助。",
+   3:"50〜74%を自分で行う。",
+   2:"25〜49%を自分で行う。",
+   1:"25%未満、または2人介助が必要。"}}
+ ]},
+ {cat:"移動",items:[
+  {k:"walk",name:"歩行・車椅子",motor:true,c:{
+   7:"補助具なしで50m以上を安全に歩行でき、自立。",
+   6:"杖・歩行器・装具などを使う、または車椅子で50m以上自立。時間・安全性への配慮を含む修正自立。",
+   5:"見守り・声かけ・準備があれば50m移動できる、または介助なしで15〜49mのみ移動できる（短距離自立）。",
+   4:"50mの移動で75%以上を自分で行い、わずかに介助。",
+   3:"50mの移動で50〜74%を自分で行う。",
+   2:"25〜49%を自分で行う、または15m程度を介助で移動。",
+   1:"25%未満、15m未満しか移動できない、または2人介助が必要。"}},
+  {k:"stairs",name:"階段",motor:true,c:{
+   7:"手すりを使わず12〜14段（約1階分）を安全に昇降でき、自立。",
+   6:"手すり・杖を使って12〜14段を昇降。時間・安全性への配慮を含む修正自立。",
+   5:"見守り・声かけがあれば12〜14段を昇降できる、または介助なしで4〜6段のみ昇降できる。",
+   4:"12〜14段で75%以上を自分で行い、わずかに介助。",
+   3:"12〜14段で50〜74%を自分で行う。",
+   2:"25〜49%を自分で行う、または4〜6段を介助で昇降。",
+   1:"25%未満、4段未満しか昇降できない、または2人介助が必要。"}}
+ ]},
+ {cat:"コミュニケーション",items:[
+  {k:"comp",name:"理解",motor:false,c:{
+   7:"複雑・抽象的な内容を含め、聴覚・視覚的な情報を問題なく理解できる。",
+   6:"複雑・抽象的な内容もほぼ理解できるが、軽度の困難がある／補聴器・眼鏡を使う／時間がかかる。",
+   5:"日常的な会話の90%以上を理解。時々の促しやゆっくりした説明があればよい。",
+   4:"75〜90%を理解。",
+   3:"50〜74%を理解。短く簡単な内容に促しが必要。",
+   2:"25〜49%を理解。基本的な欲求に関する簡単な指示のみ、繰り返しやジェスチャーが必要。",
+   1:"25%未満。ほとんど理解できない。"}},
+  {k:"expr",name:"表出",motor:false,c:{
+   7:"複雑・抽象的な内容を含め、言語または非言語で明瞭に表現できる。",
+   6:"ほぼ問題なく表現できるが、軽度の困難がある／意思伝達機器を使う／時間がかかる。",
+   5:"日常的な内容の90%以上を表出。時々の促しがあればよい。",
+   4:"75〜90%を表出。",
+   3:"50〜74%を表出。基本的な欲求は伝えられる。",
+   2:"25〜49%を表出。単語やジェスチャーで基本的欲求のみ。",
+   1:"25%未満。ほとんど表出できない。"}}
+ ]},
+ {cat:"社会的認知",items:[
+  {k:"social",name:"社会的交流",motor:false,c:{
+   7:"治療・集団・家庭などあらゆる場面で他者と適切に交流でき、自立。",
+   6:"慣れた状況ではほぼ適切だが、軽度の困難があり、時々自分で調整が必要。",
+   5:"90%以上の場面で適切。ストレスや慣れない状況でのみ見守り・促しが必要。",
+   4:"75〜90%で適切（監視は1日1回未満）。",
+   3:"50〜74%で適切。",
+   2:"25〜49%で適切。しばしば不適切な言動があり介入が必要。",
+   1:"25%未満。ほとんど適切に交流できない。"}},
+  {k:"prob",name:"問題解決",motor:false,c:{
+   7:"複雑な問題も認識し、解決策を立て、実行・自己修正まで自立してできる。",
+   6:"軽度の困難があり時間がかかるが、日常的な問題を自分で解決できる。",
+   5:"90%以上の場面で解決できる。困難な状況で時々の促しが必要。",
+   4:"75〜90%で解決できる。",
+   3:"50〜74%で解決できる。日常的・簡単な問題に促しが必要。",
+   2:"25〜49%。ごく簡単な問題のみ解決できる。",
+   1:"25%未満。ほとんど解決できず、常に介助が必要。"}},
+  {k:"mem",name:"記憶",motor:false,c:{
+   7:"よく会う人・日課・他者からの依頼など、日常に必要な情報を問題なく記憶・実行できる。",
+   6:"軽度の困難があるが、メモ帳など自分で工夫した手がかりを使えば自立できる。",
+   5:"90%以上を記憶できる。時々の促しや手がかりの提示が必要。",
+   4:"75〜90%を記憶できる。",
+   3:"50〜74%を記憶できる。",
+   2:"25〜49%。繰り返しの提示が必要。",
+   1:"25%未満。ほとんど記憶できない。"}}
+ ]}
+];
+
+/* フラット項目リスト & キー→項目 */
+var ALL_ITEMS=[]; FIM_DATA.forEach(function(g){g.items.forEach(function(it){it.category=g.cat;ALL_ITEMS.push(it);});});
+var ITEM_BY_KEY={}; ALL_ITEMS.forEach(function(it){ITEM_BY_KEY[it.k]=it;});
+
+/* ===== 状態保存 ===== */
+var STORE_KEY="fimTrainerProgress";
+var state={scores:{},quiz:{attempts:0,correct:0}};
+function loadState(){try{var s=JSON.parse(localStorage.getItem(STORE_KEY));if(s){state.scores=s.scores||{};state.quiz=s.quiz||{attempts:0,correct:0};}}catch(e){}}
+function saveState(){try{localStorage.setItem(STORE_KEY,JSON.stringify(state));}catch(e){}}
+
+/* ===== タブ切替 ===== */
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(function(s){s.classList.toggle("active",s.id===id);});
+  document.querySelectorAll(".tabbar button").forEach(function(b){b.classList.toggle("active",b.dataset.screen===id);});
+  window.scrollTo(0,0);
+}
+document.querySelectorAll(".tabbar button").forEach(function(b){b.addEventListener("click",function(){showScreen(b.dataset.screen);});});
+
+/* ===== モーダル ===== */
+function openModal(html){var o=document.getElementById("modalOverlay");document.getElementById("modalBox").innerHTML='<button class="modal-close" onclick="closeModal()">×</button>'+html;o.classList.add("show");}
+function closeModal(){document.getElementById("modalOverlay").classList.remove("show");}
+document.getElementById("modalOverlay").addEventListener("click",function(e){if(e.target===this)closeModal();});
+
+/* 基準HTML生成（採点モードの？と学習ガイドで共用） */
+function criteriaHTML(it){
+  var h='<h3>'+it.name+'</h3><p class="muted" style="margin-top:0">'+it.category+'　各点数の判定基準</p>';
+  for(var s=7;s>=1;s--){
+    h+='<div class="crit-row"><div class="crit-score sc'+s+'">'+s+'</div><div class="crit-txt"><b>'+s+'点：'+LABELS[s]+'</b><br>'+it.c[s]+'</div></div>';
+  }
+  return h;
+}
+
+/* ================= 採点モード ================= */
+function renderScore(){
+  var c=document.getElementById("scoreContainer");
+  var html='<div class="card" style="padding:12px 14px"><p class="section-title">📝 採点モード</p><p class="muted" style="margin:0">各項目の点数（1〜7）をタップしてください。「？」で判定基準を確認できます。</p></div>';
+  FIM_DATA.forEach(function(g){
+    html+='<div class="cat-block"><div class="cat-head"><span>'+g.cat+'</span><span class="sub" id="sub-'+catId(g.cat)+'">小計 –</span></div><div class="cat-body">';
+    g.items.forEach(function(it){
+      html+='<div class="item-row"><div class="item-top"><span class="item-name">'+it.name+'</span><button class="help-btn" data-help="'+it.k+'">？</button></div><div class="score-btns" data-item="'+it.k+'">';
+      for(var s=1;s<=7;s++){html+='<button data-score="'+s+'">'+s+'</button>';}
+      html+='</div><div class="item-label empty" id="lbl-'+it.k+'">未入力</div></div>';
+    });
+    html+='</div></div>';
+  });
+  html+='<div class="summary"><div class="sum-grid">'
+    +'<div class="sum-cell"><span class="lbl">運動 (13–91)</span><span class="val" id="sumMotor">–</span></div>'
+    +'<div class="sum-cell"><span class="lbl">認知 (5–35)</span><span class="val" id="sumCog">–</span></div>'
+    +'<div class="sum-cell total"><span class="lbl">総合計 (18–126)</span><span class="val" id="sumTotal">–</span></div>'
+    +'</div><div class="sum-foot"><span class="rest" id="sumRest">未入力 18 項目</span>'
+    +'<button class="btn btn-danger" onclick="resetScores()">リセット</button></div></div>';
+  c.innerHTML=html;
+  c.querySelectorAll(".score-btns").forEach(function(row){
+    row.querySelectorAll("button").forEach(function(btn){
+      btn.addEventListener("click",function(){setScore(row.dataset.item,parseInt(btn.dataset.score,10));});
+    });
+  });
+  c.querySelectorAll(".help-btn").forEach(function(b){b.addEventListener("click",function(){openModal(criteriaHTML(ITEM_BY_KEY[b.dataset.help]));});});
+  ALL_ITEMS.forEach(function(it){if(state.scores[it.k])applyScoreUI(it.k,state.scores[it.k]);});
+  updateSummary();
+}
+function catId(name){return FIM_DATA.map(function(g){return g.cat;}).indexOf(name);}
+function applyScoreUI(k,val){
+  var row=document.querySelector('.score-btns[data-item="'+k+'"]');
+  if(!row)return;
+  row.querySelectorAll("button").forEach(function(b){b.classList.toggle("sel",parseInt(b.dataset.score,10)===val);});
+  var lbl=document.getElementById("lbl-"+k);
+  lbl.textContent=val+"点＝"+LABELS[val];lbl.classList.remove("empty");
+}
+function setScore(k,val){state.scores[k]=val;applyScoreUI(k,val);saveState();updateSummary();}
+function updateSummary(){
+  var motor=0,cog=0,rest=0;
+  var catSum={};FIM_DATA.forEach(function(g){catSum[g.cat]=0;});
+  ALL_ITEMS.forEach(function(it){
+    var v=state.scores[it.k];
+    if(v){catSum[it.category]+=v;if(it.motor)motor+=v;else cog+=v;}else{rest++;}
+  });
+  FIM_DATA.forEach(function(g){
+    var el=document.getElementById("sub-"+catId(g.cat));
+    var done=g.items.filter(function(it){return state.scores[it.k];}).length;
+    el.textContent=done?("小計 "+catSum[g.cat]):"小計 –";
+  });
+  document.getElementById("sumMotor").textContent=motor||"–";
+  document.getElementById("sumCog").textContent=cog||"–";
+  var total=motor+cog;
+  document.getElementById("sumTotal").textContent=total||"–";
+  document.getElementById("sumRest").textContent=rest?("未入力 "+rest+" 項目"):"全項目入力済み ✓";
+}
+function resetScores(){
+  if(!confirm("すべての採点結果をリセットします。よろしいですか？"))return;
+  state.scores={};saveState();renderScore();
+}
+
+/* ================= 学習ガイド ================= */
+function renderLearn(){
+  var c=document.getElementById("learnContainer");
+  var h='';
+  h+='<div class="card"><p class="section-title">📖 FIMとは？</p><p class="muted" style="margin:0">FIM（機能的自立度評価法, Functional Independence Measure）は、患者さんが日常生活動作を「実際にどれくらい自分で行えているか」を評価する国際的な指標です。運動13項目＋認知5項目の計18項目を、それぞれ1〜7点で採点します（合計18〜126点）。回復期リハでは入棟時・退棟時の比較で改善度（FIM利得）を見る大切な指標です。</p></div>';
+  // 早見表
+  h+='<div class="card"><p class="section-title">📊 7段階の共通ルール早見表</p><table class="rule-table"><tbody>';
+  var rules=[[7,"完全自立","補助具・時間・介助なしで、安全に自分で行える"],[6,"修正自立","自助具の使用／時間がかかる／安全性への配慮が必要（介助者不要）"],[5,"監視・準備","見守り・声かけ・指示・準備があればできる（手は触れない）"],[4,"最小介助","患者が75%以上を自分で行う（介助は25%未満）"],[3,"中等度介助","患者が50〜74%を自分で行う"],[2,"最大介助","患者が25〜49%を自分で行う"],[1,"全介助","患者が行うのは25%未満（ほぼ全面介助）"]];
+  rules.forEach(function(r){h+='<tr><td class="n sc'+r[0]+'">'+r[0]+'</td><td><b>'+r[1]+'</b><br><span class="muted">'+r[2]+'</span></td></tr>';});
+  h+='</tbody></table><p class="muted" style="margin:8px 0 0">7・6点は介助者が不要な「自立」、5〜1点は介助者が必要な「介助」レベルです。</p></div>';
+  // 基本原則
+  h+='<div class="card"><p class="section-title">✅ 採点の基本原則</p><ul class="principle" style="margin:4px 0 0;padding-left:20px;font-size:14px">'
+    +'<li><b>「している動作」で評価：</b>「できる能力」ではなく、実生活で実際に行っている状況で採点します。</li>'
+    +'<li><b>低い方の点数を採用：</b>時間帯や日で差がある場合や、複数の下位動作で差がある場合は、原則として低い方（介助量の多い方）に合わせます。</li>'
+    +'<li><b>24時間で変動する場合：</b>日中と夜間で介助量が違うときは、より手のかかる状況（低い点数）で採点します。</li>'
+    +'<li><b>安全性への配慮：</b>時間が極端にかかる・安全に不安がある場合は6点（修正自立）まで下がります。</li>'
+    +'<li><b>用具・自助具の使用：</b>杖・手すり・自助具・カテーテル等を使う場合は、介助者が不要でも7点ではなく6点になります。</li>'
+    +'<li><b>介助者が触れたら5点以下：</b>見守り・準備のみは5点、少しでも身体に触れて手伝えば4点以下です。</li>'
+    +'</ul></div>';
+  // 項目別アコーディオン
+  h+='<div class="card"><p class="section-title">🔍 全18項目の詳細基準</p><p class="muted" style="margin:0 0 10px">タップして各項目の1〜7点の基準を確認できます。</p>';
+  FIM_DATA.forEach(function(g){
+    h+='<p style="font-weight:700;color:var(--teal-dark);font-size:13px;margin:12px 0 6px">'+g.cat+'</p>';
+    g.items.forEach(function(it){
+      h+='<div class="acc"><div class="acc-head" onclick="this.parentNode.classList.toggle(\'open\')"><span>'+it.name+'</span><span class="arw">▶</span></div><div class="acc-body">'+critBodyHTML(it)+'</div></div>';
+    });
+  });
+  h+='</div>';
+  c.innerHTML=h;
+}
+function critBodyHTML(it){
+  var h='';
+  for(var s=7;s>=1;s--){h+='<div class="crit-row"><div class="crit-score sc'+s+'">'+s+'</div><div class="crit-txt"><b>'+s+'点：'+LABELS[s]+'</b><br>'+it.c[s]+'</div></div>';}
+  return h;
+}
+
+/* ================= 練習問題 ================= */
+/* 症例問題（answerは1〜7点） */
+var CASE_Q=[
+ {item:"食事",q:"配膳後にとろみをつける準備をすれば、あとは自分で全部食べられる。",a:5,e:"きざみ・とろみへの調整は「準備」にあたります。身体には触れず準備だけで完結するため5点（監視・準備）です。"},
+ {item:"食事",q:"太柄スプーンと滑り止めマットを使えば、時間はかかるが一人で食べきる。",a:6,e:"自助具を使い、時間がかかる状態です。介助者は不要なので6点（修正自立）になります。"},
+ {item:"食事",q:"前半は自分で食べるが、疲れて後半のおよそ半分は介助者が口へ運んでいる。",a:3,e:"本人が行うのは全体の約50%です。50〜74%を本人が行う3点（中等度介助）に該当します。"},
+ {item:"食事",q:"ほとんど介助だが、パンだけは自分で口に運ぶ（本人はおよそ2割）。",a:2,e:"本人が行うのは25〜49%程度で、大部分を介助しているため2点（最大介助）です。"},
+ {item:"整容",q:"整容5動作のうち4つは自分で行い、髭剃りだけ介助が必要（本人約80%）。",a:4,e:"本人が75%以上を行っているため4点（最小介助）です。"},
+ {item:"整容",q:"道具を準備し歯ブラシに歯磨き粉をつけてあげれば、あとは全部自分でできる。",a:5,e:"必要なのは準備のみで身体に触れる介助はないため、5点（監視・準備）です。"},
+ {item:"清拭（入浴）",q:"10部位のうち7部位は自分で洗えるが、足と陰部は洗えず介助（本人約70%）。",a:3,e:"本人が洗えるのは50〜74%（7/10）にあたるため3点（中等度介助）です。"},
+ {item:"清拭（入浴）",q:"長柄ブラシを使えば、時間をかけて背中以外を自分で洗える。",a:6,e:"自助具を使い時間がかかるが介助者は不要なので6点（修正自立）です。"},
+ {item:"更衣（上半身）",q:"かぶりシャツを準備して声かけすれば、自分で着られる。",a:5,e:"準備と声かけ（見守り）のみで着られるため5点（監視・準備）です。"},
+ {item:"更衣（上半身）",q:"ボタンエイドを使い、時間はかかるが前開きシャツを一人で着られる。",a:6,e:"自助具を使い時間がかかるが自立しているため6点（修正自立）です。"},
+ {item:"更衣（下半身）",q:"ズボンを膝までは自分で上げるが、立位でお尻まで上げる部分は介助（本人約70%）。",a:4,e:"本人が75%前後を行っており最小介助にあたるため4点です（本人の割合が7割強なら4点、半分程度なら3点になる境目に注意）。"},
+ {item:"更衣（下半身）",q:"ソックスエイドで靴下を履き、短下肢装具も自分で装着できる。",a:6,e:"自助具を使い装具装着まで自立しているため6点（修正自立）です。"},
+ {item:"トイレ動作",q:"手すりを使えば、衣服の上げ下げから排泄後の清拭まで一人でできる。",a:6,e:"手すり（補助具）を使うが介助者は不要なので6点（修正自立）です。"},
+ {item:"トイレ動作",q:"衣服の上げ下げは自分でできるが、排泄後の清拭は毎回介助が必要（本人約60%）。",a:3,e:"本人が行うのは50〜74%程度のため3点（中等度介助）です。"},
+ {item:"排尿管理",q:"自己導尿を毎回自分で行い、失禁はまったくない。",a:6,e:"用具（カテーテル）を自分で管理し失敗がないため6点（修正自立）です。"},
+ {item:"排尿管理",q:"普段は自立しているが、月に1回くらい間に合わず失禁することがある。",a:5,e:"ごくまれ（概ね月1回以下）の失禁は5点に該当します。頻度と介助量の低い方で採点します。"},
+ {item:"排尿管理",q:"週に1回ほどトイレに間に合わず失禁する。用具は使っていない。",a:4,e:"75%以上はコントロールできており、週1回程度の失敗は4点に該当します。"},
+ {item:"排尿管理",q:"1日1回はパッドを濡らし、その交換も一部介助している。",a:3,e:"1日1回程度の失禁で介助も要する状態は3点（中等度介助）に該当します。"},
+ {item:"排便管理",q:"緩下剤を自分で管理・服用しており、失禁はない。",a:6,e:"薬剤を自分で管理し失敗がないため6点（修正自立）です。"},
+ {item:"排便管理",q:"排便は自立しているが、月に1回程度失禁することがある。",a:5,e:"ごくまれ（概ね月1回以下）の失禁は5点に該当します。"},
+ {item:"移乗（ベッド・椅子・車椅子）",q:"車椅子へ移る際、ブレーキとフットレストを操作し手すりを使って一人で乗り移る。",a:6,e:"補助具（手すり）を使うが介助者は不要なので6点（修正自立）です。車椅子操作も評価対象です。"},
+ {item:"移乗（ベッド・椅子・車椅子）",q:"立ち上がりに軽く手を添える介助が必要だが、大部分は自分で移乗する（本人約80%）。",a:4,e:"本人が75%以上を行い、わずかに触れる介助のため4点（最小介助）です。"},
+ {item:"移乗（ベッド・椅子・車椅子）",q:"移乗時、介助者が体を支えて半分ほど引き上げている（本人約50%）。",a:3,e:"本人が50〜74%を行うため3点（中等度介助）です。"},
+ {item:"移乗（ベッド・椅子・車椅子）",q:"見守りと車椅子のセッティングをすれば、あとは自分で移れる。",a:5,e:"見守りと準備のみで身体に触れる介助はないため5点（監視・準備）です。"},
+ {item:"移乗（トイレ）",q:"便器への移乗を、いつも2人がかりで介助している。",a:1,e:"2人がかりの介助が必要な場合は1点（全介助）です。"},
+ {item:"移乗（浴槽・シャワー）",q:"バスボードと手すりを使い、時間をかけて一人で浴槽に出入りする。",a:6,e:"補助具を使い時間がかかるが自立しているため6点（修正自立）です。"},
+ {item:"移動（歩行・車椅子）",q:"4点杖と短下肢装具を使って、50m以上を安全に一人で歩ける。",a:6,e:"補助具を使うが介助者なしで50m移動できるため6点（修正自立）です。"},
+ {item:"移動（歩行・車椅子）",q:"見守りがあれば50m歩けるが、一人だと不安で付き添いが必要。",a:5,e:"見守り・付き添いがあれば50m歩けるため5点（監視・準備）です。"},
+ {item:"移動（歩行・車椅子）",q:"一人では20mしか歩けず、それ以上は介助が必要。",a:5,e:"介助なしで15〜49mのみ移動できる短距離自立は5点（例外規定）に該当します。"},
+ {item:"移動（歩行・車椅子）",q:"車椅子を自分で50m以上こいで移動できる。",a:6,e:"車椅子で50m以上を自立移動できる場合は6点（修正自立）です。"},
+ {item:"移動（歩行・車椅子）",q:"歩行時に軽く手を添えれば50m歩ける（本人約80%）。",a:4,e:"本人が75%以上を行い、わずかな介助のため4点（最小介助）です。"},
+ {item:"移動（階段）",q:"手すりを使って12段（1階分）を一人で昇り降りできる。",a:6,e:"手すりを使うが介助者なしで12〜14段を昇降できるため6点（修正自立）です。"},
+ {item:"移動（階段）",q:"見守りがあれば1階分の階段を昇降できるが、一人では危険。",a:5,e:"見守りがあれば12〜14段を昇降できるため5点（監視・準備）です。"},
+ {item:"移動（階段）",q:"一人では4〜6段しか昇れず、それ以上は介助が必要。",a:5,e:"介助なしで4〜6段のみ昇降できる場合は5点（短距離の例外規定）に該当します。"},
+ {item:"移動（階段）",q:"階段昇降は常に2人がかりで介助している。",a:1,e:"2人介助が必要な場合は1点（全介助）です。"},
+ {item:"理解",q:"日常会話はほぼ理解できるが、複雑な説明では時々ゆっくり繰り返す必要がある（90%以上理解）。",a:5,e:"日常会話の90%以上を理解し、時々の促しで足りるため5点です。"},
+ {item:"理解",q:"「口を開けて」など簡単な指示を、繰り返しやジェスチャーを添えれば半分ほど理解できる。",a:2,e:"理解できるのが25〜49%程度のため2点（最大介助相当）です。"},
+ {item:"表出",q:"意思伝達に軽度の困難があるが、時間をかければほぼ的確に伝えられる。",a:6,e:"軽度の困難・時間はかかるが、ほぼ自立して表出できるため6点です。"},
+ {item:"表出",q:"単語やジェスチャーで、基本的な欲求だけ何とか伝えられる（約30%）。",a:2,e:"表出できるのが25〜49%程度のため2点です。"},
+ {item:"社会的交流",q:"慣れた病棟では適切だが、慣れない場面でストレスがかかると時々見守りが必要（90%以上適切）。",a:5,e:"90%以上の場面で適切で、限られた状況のみ見守りが必要なため5点です。"},
+ {item:"問題解決",q:"日常のちょっとした問題は自分で解決できるが、複雑な状況では時々の促しが必要（90%以上）。",a:5,e:"90%以上の場面で解決でき、時々の促しで足りるため5点です。"},
+ {item:"記憶",q:"自分でメモ帳を活用すれば、日課や依頼事をほぼ忘れずに実行できる。",a:6,e:"自分で工夫した手がかり（メモ）を使って自立できるため6点（修正自立）です。"}
+];
+/* 知識問題（4択） */
+var KNOW_Q=[
+ {q:"6点と7点の違いとして正しいのは？",o:["7点は補助具を使わず自立、6点は自助具の使用や時間・安全性への配慮がある","7点は介助者が少し手伝う","6点は見守りが必要な状態","両者に違いはない"],a:0,e:"7点は補助具・配慮なしの完全自立、6点は自助具の使用・時間・安全性への配慮を伴う修正自立です。どちらも介助者は不要です。"},
+ {q:"配膳後のきざみ・とろみ調整など「準備」だけが必要な場合は何点？",o:["5点","6点","7点","4点"],a:0,e:"準備や見守りのみで身体に触れる介助がなければ5点（監視・準備）です。"},
+ {q:"FIMの採点で最も重視される考え方は？",o:["実際に「している」動作で評価する","できる能力の最大値で評価する","本人の希望で評価する","家族の申告のみで評価する"],a:0,e:"FIMは「できる能力」ではなく、実生活で実際に「している動作」で評価します。"},
+ {q:"運動項目と認知項目の項目数の組み合わせで正しいのは？",o:["運動13項目・認知5項目","運動10項目・認知8項目","運動15項目・認知3項目","運動18項目・認知0項目"],a:0,e:"FIMは運動13項目＋認知5項目の計18項目で構成されます。"},
+ {q:"FIMの合計点の範囲は？",o:["18〜126点","0〜100点","1〜7点","13〜91点"],a:0,e:"各項目1〜7点×18項目なので、合計は18〜126点です（運動13〜91点、認知5〜35点）。"},
+ {q:"杖や手すりを使えば介助者なしで移動できる場合の点数は？",o:["6点（修正自立）","7点（完全自立）","5点（監視）","4点（最小介助）"],a:0,e:"補助具を使う場合は介助者が不要でも7点ではなく6点（修正自立）になります。"},
+ {q:"介助者が身体に触れず、見守りや声かけだけで動作できる場合は？",o:["5点","6点","4点","3点"],a:0,e:"見守り・声かけ・準備のみは5点（監視・準備）です。少しでも触れると4点以下になります。"},
+ {q:"4点（最小介助）で患者本人が行う割合は？",o:["75%以上","50〜74%","25〜49%","25%未満"],a:0,e:"4点は本人が75%以上（介助は25%未満）を行う状態です。"},
+ {q:"1日の中で介助量が変動する場合、原則どう採点する？",o:["より手のかかる（低い）点数に合わせる","高い方の点数に合わせる","平均をとる","朝の状態だけで決める"],a:0,e:"変動する場合は、原則として介助量の多い（低い点数の）状況に合わせます。"},
+ {q:"排尿・排便管理の採点で考慮する2つの軸は？",o:["失禁（失敗）の頻度と介助量","歩行距離と所要時間","理解と表出","立位保持の時間"],a:0,e:"排泄コントロールは「失禁の頻度」と「介助量」の2軸で評価し、低い方の点数を採用します。"},
+ {q:"歩行の完全自立（7点）とされる移動距離の目安は？",o:["50m以上","15m以上","100m以上","10m以上"],a:0,e:"歩行・移動項目は50mを基準とします。15〜49mの短距離のみ自立の場合は5点です。"},
+ {q:"階段項目で「1階分」の目安となる段数は？",o:["12〜14段","4〜6段","20段","8段"],a:0,e:"階段は12〜14段（約1階分）を基準に採点します。4〜6段のみ自立の場合は5点です。"},
+ {q:"3点（中等度介助）で患者本人が行う割合は？",o:["50〜74%","75%以上","25〜49%","25%未満"],a:0,e:"3点は本人が50〜74%を行う状態（介助が26〜50%）です。"}
+];
+
+/* レベル定義 */
+var LEVELS=[
+ {n:1,name:"FIM見習い",need:0},{n:2,name:"FIM研修生",need:10},{n:3,name:"FIM担当ナース",need:25},
+ {n:4,name:"FIM指導者",need:50},{n:5,name:"FIM達人",need:80},{n:6,name:"FIMマスター",need:120}
+];
+function getLevel(total){var lv=LEVELS[0];for(var i=0;i<LEVELS.length;i++){if(total>=LEVELS[i].need)lv=LEVELS[i];}return lv;}
+function nextLevel(total){for(var i=0;i<LEVELS.length;i++){if(total<LEVELS[i].need)return LEVELS[i];}return null;}
+
+var quizSession=null;
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function buildSession(){
+  // 症例7割(4問)＋知識3割(1問)＝5問
+  var cases=shuffle(CASE_Q).slice(0,4).map(function(q){return {type:"case",data:q};});
+  var knows=shuffle(KNOW_Q).slice(0,1).map(function(q){return {type:"know",data:q};});
+  return shuffle(cases.concat(knows));
+}
+
+function renderQuizHome(){
+  var c=document.getElementById("quizContainer");
+  var total=state.quiz.correct;
+  var lv=getLevel(total),nx=nextLevel(total);
+  var progText,progPct;
+  if(nx){progText="次の「"+nx.name+"」まであと "+(nx.need-total)+" 問";var span=nx.need-lv.need;progPct=Math.round((total-lv.need)/span*100);}
+  else{progText="最高レベル達成！おめでとうございます";progPct=100;}
+  var rate=state.quiz.attempts?Math.round(state.quiz.correct/state.quiz.attempts*100):0;
+  var h='<div class="level-card"><div class="level-top"><span class="level-title">'+lv.name+'</span><span class="level-lv">Lv.'+lv.n+'</span></div>'
+    +'<div class="prog-wrap"><div class="prog-bar" style="width:'+progPct+'%"></div></div>'
+    +'<div class="level-sub"><span>累計正解 '+total+' 問</span><span>'+progText+'</span></div></div>';
+  h+='<div class="stat-row"><div class="stat-box"><div class="v">'+state.quiz.attempts+'</div><div class="l">挑戦した問題数</div></div>'
+    +'<div class="stat-box"><div class="v">'+state.quiz.correct+'</div><div class="l">正解数</div></div>'
+    +'<div class="stat-box"><div class="v">'+rate+'%</div><div class="l">正解率</div></div></div>';
+  h+='<div class="card" style="text-align:center"><p class="section-title" style="justify-content:center">🎯 練習問題（1回5問）</p>'
+    +'<p class="muted">症例クイズと知識クイズをランダムに5問。2〜3分でサクッと力だめし！</p>'
+    +'<button class="btn btn-primary" style="width:100%;padding:14px;font-size:16px;margin-top:6px" onclick="startQuiz()">5問チャレンジを始める</button></div>';
+  c.innerHTML=h;
+}
+function startQuiz(){quizSession={qs:buildSession(),idx:0,results:[]};renderQuestion();}
+function renderQuestion(){
+  var c=document.getElementById("quizContainer");
+  var s=quizSession,item=s.qs[s.idx];
+  var dots='';
+  for(var i=0;i<5;i++){var cls="dot";if(i<s.results.length)cls+=s.results[i]?" ok":" ng";else if(i===s.idx)cls+=" cur";dots+='<span class="'+cls+'"></span>';}
+  var h='<div class="q-progress">第 '+(s.idx+1)+' 問 / 5 問<span class="dots">'+dots+'</span></div><div class="card">';
+  var opts=[];
+  if(item.type==="case"){
+    h+='<span class="q-tag case">症例クイズ・'+item.data.item+'</span>';
+    h+='<div class="q-text">'+item.data.q+'<br><span class="muted">→ 何点が適切でしょう？</span></div>';
+    for(var v=7;v>=1;v--){opts.push({txt:v+"点　"+LABELS[v],ok:(v===item.data.a),key:v});}
+  }else{
+    h+='<span class="q-tag know">知識クイズ</span>';
+    h+='<div class="q-text">'+item.data.q+'</div>';
+    item.data.o.forEach(function(t,i){opts.push({txt:t,ok:(i===item.data.a),key:i});});
+  }
+  h+='<div class="opt-list" id="optList">';
+  opts.forEach(function(o,i){h+='<button class="opt" data-i="'+i+'"><span class="num">'+(item.type==="case"?o.key:String.fromCharCode(65+i))+'</span><span>'+o.txt+'</span></button>';});
+  h+='</div><div id="explainArea"></div></div>';
+  c.innerHTML=h;
+  var btns=c.querySelectorAll(".opt");
+  btns.forEach(function(b,i){b.addEventListener("click",function(){answerQuestion(opts,i,btns);});});
+}
+function answerQuestion(opts,chosen,btns){
+  var s=quizSession,item=s.qs[s.idx];
+  var correct=opts[chosen].ok;
+  btns.forEach(function(b,i){b.disabled=true;if(opts[i].ok)b.classList.add("correct");});
+  if(!correct)btns[chosen].classList.add("wrong");
+  s.results.push(correct);
+  state.quiz.attempts++;if(correct)state.quiz.correct++;
+  saveState();
+  if(correct)celebrate();
+  var ansTxt=item.type==="case"?(item.data.a+"点（"+LABELS[item.data.a]+"）"):item.data.o[item.data.a];
+  var exp=item.data.e;
+  var last=(s.idx===4);
+  var h='<div class="explain"><span class="res '+(correct?"ok":"ng")+'">'+(correct?"◎ 正解です！":"× 残念、不正解")+'</span>'
+    +'<b>正解：</b>'+ansTxt+'<br>'+exp+'</div>'
+    +'<button class="btn btn-primary next-btn" id="nextBtn">'+(last?"結果を見る":"次の問題へ →")+'</button>';
+  document.getElementById("explainArea").innerHTML=h;
+  document.getElementById("nextBtn").addEventListener("click",function(){
+    if(last){renderResult();}else{s.idx++;renderQuestion();}
+  });
+  document.getElementById("explainArea").scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function renderResult(){
+  var s=quizSession,c=document.getElementById("quizContainer");
+  var score=s.results.filter(Boolean).length;
+  var msgs=["また挑戦してみましょう。少しずつ慣れていけば大丈夫です！","その調子です。基準を見返すとさらに伸びます！","いい感じです！着実に力がついています。","素晴らしい！もう頼れるレベルです。","全問正解！FIM採点、バッチリですね！✨"];
+  var msg=msgs[score];
+  var total=state.quiz.correct;var lv=getLevel(total);
+  // レベルアップ判定
+  var prevTotal=total-score;var prevLv=getLevel(prevTotal);
+  var lvUp=lv.n>prevLv.n;
+  var h='<div class="card"><div class="result-hero"><div class="result-score">'+score+' / 5</div><div class="result-msg">'+msg+'</div></div>';
+  if(lvUp)h+='<div class="result-lvup">🎉 レベルアップ！「'+lv.name+'（Lv.'+lv.n+'）」になりました！</div>';
+  h+='<p class="muted" style="text-align:center;margin:6px 0 0">累計正解 '+total+' 問／現在 '+lv.name+'</p>';
+  h+='<button class="btn btn-primary" style="width:100%;padding:14px;font-size:16px;margin-top:14px" onclick="startQuiz()">もう5問チャレンジ</button>';
+  h+='<button class="btn btn-ghost" style="width:100%;padding:12px;margin-top:8px" onclick="renderQuizHome()">ホームに戻る</button></div>';
+  c.innerHTML=h;
+  if(score>=4)bigCelebrate();
+}
+/* 演出 */
+function celebrate(){
+  var s=document.createElement("div");s.className="sparkle";s.textContent="✨";
+  s.style.left=(30+Math.random()*40)+"%";s.style.top="42%";document.body.appendChild(s);
+  setTimeout(function(){s.remove();},800);
+}
+function bigCelebrate(){
+  var colors=["#1b9e9e","#2b7cc4","#e0a52e","#2fa36b","#d95c5c"];
+  for(var i=0;i<40;i++){
+    (function(){var d=document.createElement("div");d.className="confetti";
+     d.style.left=Math.random()*100+"vw";d.style.background=colors[i%colors.length];
+     d.style.animationDuration=(1.6+Math.random()*1.4)+"s";d.style.animationDelay=(Math.random()*0.3)+"s";
+     document.body.appendChild(d);setTimeout(function(){d.remove();},3600);})();
+  }
+}
+
+/* ================= 初期化 ================= */
+loadState();
+renderScore();
+renderLearn();
+renderQuizHome();
+</script>
+</body>
+</html>
